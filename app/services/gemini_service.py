@@ -1,16 +1,35 @@
 import os
-import google.generativeai as genai
 from dotenv import load_dotenv
+from google import genai
+from google.genai import errors
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel("gemini-2.5-flash")
-
-chat = model.start_chat(history=[])
+MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-3.5-flash",
+]
 
 
 def ask_gemini(message: str):
-    response = chat.send_message(message)
-    return response.text
+    last_error = None
+
+    for model in MODELS:
+        try:
+            print(f"Trying model: {model}")
+
+            response = client.models.generate_content(
+                model=model,
+                contents=message,
+            )
+
+            return response.text
+
+        except (errors.ServerError, errors.ClientError) as e:
+            print(f"{model} failed: {e}")
+            last_error = e
+
+    return f"All Gemini models failed: {last_error}"
